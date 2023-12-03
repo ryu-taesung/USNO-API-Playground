@@ -129,8 +129,6 @@ int main(int argc, char* argv[]) try {
   // tz_db.load_from_file("date_time_zonespec.csv");
   tz_db.load_from_stream(TZ_DB);
   auto timezone = getTimezoneFromLatLong(lat_long);
-  std::cout << "Using timezone: " << timezone << "\n\n";
-  boost::local_time::time_zone_ptr tz = tz_db.time_zone_from_region(timezone);
 
   // create stringstream outside of loops for reuse
   std::stringstream ss;
@@ -140,6 +138,12 @@ int main(int argc, char* argv[]) try {
       useLocalTime = true;
     else
       useLocalTime = false;
+  }
+  boost::local_time::time_zone_ptr tz = tz_db.time_zone_from_region(timezone);
+  if (useLocalTime) {
+    std::cout << "Using localtime/locale.\n\n";
+  } else {
+    std::cout << "Using timezone: " << timezone << "\n\n";
   }
   if (!useLocalTime) {
     ss.imbue(std::locale(std::locale::classic(),
