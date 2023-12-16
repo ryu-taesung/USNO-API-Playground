@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 import time
 import sys
 
+
 def get_latlong_from_zip():
     zipcode = input("Enter zip code: ")
     lat_long_lookup_url = f"https://graphical.weather.gov/xml/sample_products/browser_interface/ndfdXMLclient.php?listZipCodeList={zipcode}"
@@ -15,13 +16,20 @@ def get_latlong_from_zip():
     lat_long = tree.find('latLonList').text
 
     with open('latlong.txt', 'w', encoding='utf-8') as f:
-        f.write(lat_long)
-    
+        output = {'lat_long': lat_long, 'zip_code': zipcode}
+        f.write(json.dumps(output))
+
     return lat_long
+
 
 def get_latlong_from_file():
     with open('latlong.txt', 'r', encoding='utf-8') as f:
-        return f.read()
+
+        data = json.loads(f.read().strip())
+        print(
+            f"Using lat/long from file: {data['lat_long']} (for zip code {data['zip_code']})")
+        return data['lat_long']
+
 
 def get_moon_and_sun_data(date, lat_long):
     api_url = f"https://aa.usno.navy.mil/api/rstt/oneday?date={date}&coords={lat_long}&tz=-5&dst=true"
@@ -37,8 +45,9 @@ def get_moon_and_sun_data(date, lat_long):
     print(f"Moon phase: {moon_phase}, Illumination: {moon_illum}")
 
     for item in resp_json['properties']['data']['sundata']:
-        if item['phen'].lower() in ['rise','set']:
+        if item['phen'].lower() in ['rise', 'set']:
             print(f"{item['phen']}: {item['time']}")
+
 
 if __name__ == "__main__":
     num_days = 4  # Default value
