@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import scrolledtext
+import tkinter.font as TkFont
 import json
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -88,6 +89,28 @@ class Application(tk.Tk):
         # self.rowconfigure(4, weight=1)
         self.result.grid(columnspan=2, sticky="NESW")
 
+        tv_cols = ("Sunrise", "Sunset", "Moon illum", "Moon Phase")
+        tv_cols_widths = (300, 300, 300, 300)
+        tv_cols_stretch = (False, False, False, False)
+        self.style = ttk.Style()
+        self.style.configure('mystyle.Treeview', background="#000",
+                             foreground="#0f0", fieldbackground="#000")
+        # derived from https://stackoverflow.com/q/63144552
+        self.default_font = TkFont.nametofont('TkDefaultFont')
+        self.default_font['size'] = self.default_font['size']+1
+        self.bold_font = TkFont.nametofont('TkDefaultFont').copy()
+        self.bold_font['weight'] = 'bold'
+        self.style.configure("Treeview.Heading",
+                             font=self.bold_font, foreground='#00f')
+        self.tv = ttk.Treeview(
+            self, style="mystyle.Treeview", columns=tv_cols, show="tree headings")
+        self.tv.column("#0", width=0, stretch=False)
+        for i, col in enumerate(tv_cols):
+            self.tv.column(
+                col, minwidth=tv_cols_widths[i], anchor='w', stretch=tv_cols_stretch[i])
+            self.tv.heading(col, text=col, anchor='w')
+        self.tv.grid(columnspan=2, sticky="NESW")
+
         ttk.Separator(self, orient=tk.HORIZONTAL).grid(
             columnspan=2, sticky=tk.E+tk.W)
         self.quitButton = tk.Button(self, text="Quit", command=self.quit)
@@ -152,6 +175,10 @@ class Application(tk.Tk):
             resp = json.loads(data.decode(encoding))
             self.result.delete('1.0', tk.END)
             self.result.insert(tk.END, json.dumps(resp, indent=2))
+            self.tv.insert('', 'end', values=(
+                resp['properties']['data']['sundata'][1]['time'].split(' ')[0], 
+                resp['properties']['data']['sundata'][3]['time'].split(' ')[0], 
+                resp['properties']['data']['fracillum'], resp['properties']['data']['curphase']))
             self.progress_bar.stop()
             self.thread_started = False
         threading.Thread(target=start_thread).start()
