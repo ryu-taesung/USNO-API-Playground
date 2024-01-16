@@ -54,7 +54,7 @@ class Application(tk.Tk):
         }
         self.zip_code = "00000"
         try:
-            with open(path.join(path.dirname(__file__),'latlong.txt'), 'r') as file:
+            with open(path.join(path.dirname(__file__), 'latlong.txt'), 'r') as file:
                 json_file = file.read().strip()
                 json_data = json.loads(json_file)
                 self._vars['lat_long'].set(json_data['lat_long'])
@@ -149,7 +149,7 @@ class Application(tk.Tk):
                 self.result.delete('1.0', tk.END)
                 self.result.insert(
                     tk.END, f'Found {self.lat_long}\nPress <Request Data> to get astronomical information for this location.')
-                with open(path.join(path.dirname(__file__),'latlong.txt'), 'w', encoding='utf-8') as f:
+                with open(path.join(path.dirname(__file__), 'latlong.txt'), 'w', encoding='utf-8') as f:
                     json_out = {'zip_code': self.zip_code,
                                 'lat_long': self.lat_long}
                     f.write(json.dumps(json_out))
@@ -177,8 +177,8 @@ class Application(tk.Tk):
             self.result.delete('1.0', tk.END)
             self.result.insert(tk.END, json.dumps(resp, indent=2))
             self.tv.insert('', 'end', values=(
-                resp['properties']['data']['sundata'][1]['time'].split(' ')[0], 
-                resp['properties']['data']['sundata'][3]['time'].split(' ')[0], 
+                resp['properties']['data']['sundata'][1]['time'].split(' ')[0],
+                resp['properties']['data']['sundata'][3]['time'].split(' ')[0],
                 resp['properties']['data']['fracillum'], resp['properties']['data']['curphase']))
             self.progress_bar.stop()
             self.thread_started = False
