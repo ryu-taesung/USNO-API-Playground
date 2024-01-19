@@ -61,6 +61,8 @@ class Application(tk.Tk):
                 self._vars['zip_code'].set(json_data['zip_code'])
         except FileNotFoundError:
             pass  # File doesn't exist, proceed without loading
+        self.t1 = threading.Thread()
+        self.t2 = threading.Thread()
         self.create_widgets()
 
     def create_widgets(self):
@@ -92,7 +94,7 @@ class Application(tk.Tk):
 
         tv_cols = ("Date", "Day of Week", "Sunrise",
                    "Sunset", "Moon illum", "Moon Phase")
-        tv_cols_widths = (300, 300, 300, 300, 300, 300)
+        tv_cols_widths = (100, 100, 100, 100, 100, 200)
         tv_cols_stretch = (False, False, False, False, False, False)
         self.style = ttk.Style()
         self.style.configure('mystyle.Treeview', background="#000",
@@ -109,7 +111,7 @@ class Application(tk.Tk):
         self.tv.column("#0", width=0, stretch=False)
         for i, col in enumerate(tv_cols):
             self.tv.column(
-                col, minwidth=tv_cols_widths[i], anchor='w', stretch=tv_cols_stretch[i])
+                col, width=tv_cols_widths[i], anchor='w', stretch=tv_cols_stretch[i])
             self.tv.heading(col, text=col, anchor='w')
         self.tv.grid(columnspan=2, sticky="NESW")
 
@@ -127,11 +129,10 @@ class Application(tk.Tk):
         print(self._vars['zip_code'].get())
 
     def get_lat_long_from_zip(self):
-        self.thread_started = False
-
-        def start_thread():
-            if self.thread_started:
+        if self.t1.is_alive():
                 return
+
+        def start_thread():            
             try:
                 self.zip_code = self._vars['zip_code'].get()
                 if not (len(self.zip_code) == 5 and self.zip_code.isdigit() and self.zip_code != '00000'):
@@ -139,7 +140,6 @@ class Application(tk.Tk):
                     self.result.insert(
                         tk.END, f'Invalid ZIP code!\n')
                     return
-                self.thread_started = True
                 self.progress_bar.start(100)
                 lat_long_lookup_url = f"https://graphical.weather.gov/xml/sample_products/browser_interface/ndfdXMLclient.php?listZipCodeList={self.zip_code}"
                 zip_req = urllib.request.urlopen(lat_long_lookup_url)
@@ -157,35 +157,36 @@ class Application(tk.Tk):
             except:
                 self.result.insert(
                     tk.END, f'Error getting Lat/Long from ZIP code\n')
-            self.thread_started = False
             self.progress_bar.stop()
-        threading.Thread(target=start_thread).start()
+        self.t1 = threading.Thread(target=start_thread, daemon=True)
+        self.t1.start()
 
     def get_json_data(self):
-        self.thread_started = False
-
-        def start_thread():
-            if self.thread_started:
+        if self.t2.is_alive():
                 return
-            self.thread_started = True
+        def start_thread():            
             self.progress_bar.start(100)
-            date = dt.datetime.today().strftime('%Y-%m-%d')
-            api_url = f"https://aa.usno.navy.mil/api/rstt/oneday?date={date}&coords={self._vars['lat_long'].get()}&tz=-5&dst=true"
-            req = urllib.request.urlopen(api_url)
-            data = req.read()
-            encoding = req.info().get_content_charset('utf-8')
-            resp = json.loads(data.decode(encoding))
-            self.result.delete('1.0', tk.END)
-            self.result.insert(tk.END, json.dumps(resp, indent=2))
-            self.tv.insert('', 'end', values=(
-                f"{resp['properties']['data']['year']}-{resp['properties']['data']['month']:02d}-{resp['properties']['data']['day']:02d}",
-                resp['properties']['data']['day_of_week'],
-                resp['properties']['data']['sundata'][1]['time'].split(' ')[0],
-                resp['properties']['data']['sundata'][3]['time'].split(' ')[0],
-                resp['properties']['data']['fracillum'], resp['properties']['data']['curphase']))
+            self.tv.delete(*self.tv.get_children())
+            for i in range(-1, 4):
+                #date = dt.datetime.today().strftime('%Y-%m-%d')
+                date = (dt.datetime.today() + dt.timedelta(days=i)).strftime('%Y-%m-%d')
+                api_url = f"https://aa.usno.navy.mil/api/rstt/oneday?date={date}&coords={self._vars['lat_long'].get()}&tz=-5&dst=true"
+                req = urllib.request.urlopen(api_url)
+                data = req.read()
+                encoding = req.info().get_content_charset('utf-8')
+                resp = json.loads(data.decode(encoding))
+                self.result.delete('1.0', tk.END)
+                self.result.insert(tk.END, json.dumps(resp, indent=2))
+                self.tv.insert('', 'end', values=(
+                    f"{resp['properties']['data']['year']}-{resp['properties']['data']['month']:02d}-{resp['properties']['data']['day']:02d}",
+                    resp['properties']['data']['day_of_week'][0:3],
+                    resp['properties']['data']['sundata'][1]['time'].split(' ')[0],
+                    resp['properties']['data']['sundata'][3]['time'].split(' ')[0],
+                    resp['properties']['data']['fracillum'], resp['properties']['data']['curphase']))
+                time.sleep(.5)
             self.progress_bar.stop()
-            self.thread_started = False
-        threading.Thread(target=start_thread).start()
+        self.t2 = threading.Thread(target=start_thread, daemon=True)
+        self.t2.start()
 
 
 if __name__ == "__main__":
