@@ -95,7 +95,7 @@ class Application(tk.Tk):
 
         tv_cols = ("Date", "Day of Week", "Sunrise",
                    "Sunset", "Moon illum", "Moon Phase")
-        tv_cols_widths = (100, 100, 100, 100, 100, 200)
+        tv_cols_widths = (80, 90, 70, 70, 70, 200)
         tv_cols_stretch = (False, False, False, False, False, False)
         self.style = ttk.Style()
         self.style.configure('mystyle.Treeview', background="#000",
