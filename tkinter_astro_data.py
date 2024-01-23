@@ -45,6 +45,7 @@ class Application(tk.Tk):
     def __init__(self, title, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title(title)
+        self.scaling_factor = self.tk.call('tk', 'scaling')
         # self.iconbitmap("test.ico")
         self._vars = {
             'zip_code': tk.StringVar(self),
@@ -111,8 +112,10 @@ class Application(tk.Tk):
         self.tv.column("#0", width=0, stretch=False)
         for i, col in enumerate(tv_cols):
             self.tv.column(
-                col, width=tv_cols_widths[i], anchor='w', stretch=tv_cols_stretch[i])
+                col, width=int(self.scaling_factor * tv_cols_widths[i]), anchor='w', stretch=tv_cols_stretch[i])
             self.tv.heading(col, text=col, anchor='w')
+        
+        self.style.configure("Treeview", rowheight=int(self.scaling_factor * (TkFont.nametofont('TkDefaultFont')['size']*1.5)))
         self.tv.grid(columnspan=2, sticky="NESW")
 
         ttk.Separator(self, orient=tk.HORIZONTAL).grid(
