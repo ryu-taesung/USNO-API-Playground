@@ -67,7 +67,6 @@ class Application(tk.Tk):
         self.create_widgets()
 
     def create_widgets(self):
-        # self.zip_code = tk.Entry(self, textvariable=self._vars['zip_code'])
         self.input_zip_code = ZipLabelInput(self, 'Zip Code', tk.Entry, {
             'textvariable': self._vars['zip_code']})
         self.columnconfigure(0, weight=1)
@@ -84,14 +83,15 @@ class Application(tk.Tk):
             self, text="Request Data", command=self.get_json_data)
         self.api_request_button.grid(
             column=0, columnspan=2, pady=5, sticky="nsew")
-
-        # ttk.Separator(self, orient=tk.HORIZONTAL).grid(
-        #    columnspan=2, pady=5, sticky=tk.E+tk.W)
-
-        self.result = scrolledtext.ScrolledText(
-            self, wrap=tk.WORD, bg="#000000", fg="#00ff00")
-        # self.rowconfigure(4, weight=1)
-        self.result.grid(columnspan=2, sticky="NESW")
+        self.notebook = ttk.Notebook(self)
+        
+        self.frame_treeview = tk.Frame(self.notebook)
+        self.frame_scrolledtext = tk.Frame(self.notebook)
+        
+        self.frame_treeview.columnconfigure(0, weight=1)
+        self.frame_treeview.rowconfigure(0, weight=1)
+        self.frame_scrolledtext.columnconfigure(0, weight=1)
+        self.frame_scrolledtext.rowconfigure(0, weight=1)
 
         tv_cols = ("Date", "Day of Week", "Sunrise",
                    "Sunset", "Moon illum", "Moon Phase")
@@ -116,16 +116,27 @@ class Application(tk.Tk):
             self.tv.heading(col, text=col, anchor='w')
         
         self.style.configure("Treeview", rowheight=int(self.scaling_factor * (TkFont.nametofont('TkDefaultFont')['size']*1.5)))
-        self.tv.grid(columnspan=2, sticky="NESW")
+        self.tv.grid(in_=self.frame_treeview, columnspan=2, sticky="NESW")  # Place the treeview in the first tab
+
+        self.result = scrolledtext.ScrolledText(
+            self.frame_scrolledtext, wrap=tk.WORD, bg="#000000", fg="#00ff00")
+        self.result.grid(columnspan=2, sticky="NESW")
+
+        self.notebook.add(self.frame_treeview, text='Result')
+        self.notebook.add(self.frame_scrolledtext, text='Raw JSON')
+
+        self.notebook.grid(columnspan=2, sticky="NESW")
+
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(3, weight=1)
 
         ttk.Separator(self, orient=tk.HORIZONTAL).grid(
-            columnspan=2, sticky=tk.E+tk.W)
+            columnspan=2, sticky=tk.E + tk.W)
         self.quitButton = tk.Button(self, text="Quit", command=self.quit)
         self.quitButton.grid(columnspan=3)
 
         self.progress_bar = ttk.Progressbar(
             self, mode="indeterminate", maximum=10)
-        self.rowconfigure(3, weight=1)
         self.progress_bar.grid(columnspan=3, sticky="nesw")
 
     def print_zip(self):
