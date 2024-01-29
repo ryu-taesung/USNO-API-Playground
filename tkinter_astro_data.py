@@ -9,6 +9,7 @@ import threading
 import time
 import datetime as dt
 from os import path
+import queue
 
 
 class LabelInput(tk.Frame):
@@ -64,6 +65,7 @@ class Application(tk.Tk):
             pass  # File doesn't exist, proceed without loading
         self.t1 = threading.Thread()
         self.t2 = threading.Thread()
+        self.queue = queue.Queue()
         self.create_widgets()
 
     def create_widgets(self):
@@ -84,10 +86,10 @@ class Application(tk.Tk):
         self.api_request_button.grid(
             column=0, columnspan=2, pady=5, sticky="nsew")
         self.notebook = ttk.Notebook(self)
-        
+
         self.frame_treeview = tk.Frame(self.notebook)
         self.frame_scrolledtext = tk.Frame(self.notebook)
-        
+
         self.frame_treeview.columnconfigure(0, weight=1)
         self.frame_treeview.rowconfigure(0, weight=1)
         self.frame_scrolledtext.columnconfigure(0, weight=1)
@@ -114,9 +116,11 @@ class Application(tk.Tk):
             self.tv.column(
                 col, width=int(self.scaling_factor * tv_cols_widths[i]), anchor='w', stretch=tv_cols_stretch[i])
             self.tv.heading(col, text=col, anchor='w')
-        
-        self.style.configure("Treeview", rowheight=int(self.scaling_factor * (TkFont.nametofont('TkDefaultFont')['size']*1.5)))
-        self.tv.grid(in_=self.frame_treeview, columnspan=2, sticky="NESW")  # Place the treeview in the first tab
+
+        self.style.configure("Treeview", rowheight=int(
+            self.scaling_factor * (TkFont.nametofont('TkDefaultFont')['size']*1.5)))
+        # Place the treeview in the first tab
+        self.tv.grid(in_=self.frame_treeview, columnspan=2, sticky="NESW")
 
         self.result = scrolledtext.ScrolledText(
             self.frame_scrolledtext, wrap=tk.WORD, bg="#000000", fg="#00ff00")
@@ -144,9 +148,9 @@ class Application(tk.Tk):
 
     def get_lat_long_from_zip(self):
         if self.t1.is_alive():
-                return
+            return
 
-        def start_thread():            
+        def start_thread():
             try:
                 self.zip_code = self._vars['zip_code'].get()
                 if not (len(self.zip_code) == 5 and self.zip_code.isdigit() and self.zip_code != '00000'):
@@ -177,32 +181,46 @@ class Application(tk.Tk):
 
     def get_json_data(self):
         if self.t2.is_alive():
-                return
-        def start_thread():            
+            return
+
+        def start_thread():
             self.progress_bar.start(100)
             self.tv.delete(*self.tv.get_children())
             for i in range(-1, 4):
-                #date = dt.datetime.today().strftime('%Y-%m-%d')
-                date = (dt.datetime.today() + dt.timedelta(days=i)).strftime('%Y-%m-%d')
+                # date = dt.datetime.today().strftime('%Y-%m-%d')
+                date = (dt.datetime.today() +
+                        dt.timedelta(days=i)).strftime('%Y-%m-%d')
                 api_url = f"https://aa.usno.navy.mil/api/rstt/oneday?date={date}&coords={self._vars['lat_long'].get()}&tz=-5&dst=true"
                 req = urllib.request.urlopen(api_url)
                 data = req.read()
                 encoding = req.info().get_content_charset('utf-8')
                 resp = json.loads(data.decode(encoding))
-                self.result.delete('1.0', tk.END)
-                self.result.insert(tk.END, json.dumps(resp, indent=2))
-                self.tv.insert('', 'end', values=(
-                    f"{resp['properties']['data']['year']}-{resp['properties']['data']['month']:02d}-{resp['properties']['data']['day']:02d}",
-                    resp['properties']['data']['day_of_week'][0:3],
-                    resp['properties']['data']['sundata'][1]['time'].split(' ')[0],
-                    resp['properties']['data']['sundata'][3]['time'].split(' ')[0],
-                    resp['properties']['data']['fracillum'], resp['properties']['data']['curphase']))
+                self.queue.put(resp)
                 time.sleep(.5)
             self.progress_bar.stop()
         self.t2 = threading.Thread(target=start_thread, daemon=True)
         self.t2.start()
 
+    def check_queue(self):
+        try:
+            resp = self.queue.get_nowait()
+            self.result.delete('1.0', tk.END)
+            self.result.insert(tk.END, json.dumps(resp, indent=2))
+            tv_row = (
+                f"{resp['properties']['data']['year']}-{resp['properties']['data']['month']:02d}-{resp['properties']['data']['day']:02d}",
+                resp['properties']['data']['day_of_week'][0:3],
+                resp['properties']['data']['sundata'][1]['time'].split(' ')[
+                    0],
+                resp['properties']['data']['sundata'][3]['time'].split(' ')[
+                    0],
+                resp['properties']['data']['fracillum'], resp['properties']['data']['curphase'])
+            self.tv.insert('', 'end', values=tv_row)
+        except queue.Empty:
+            pass
+        self.after(100, self.check_queue)
+
 
 if __name__ == "__main__":
     app = Application("USNO API Client")
+    app.check_queue()
     app.mainloop()
